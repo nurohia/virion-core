@@ -1,0 +1,11 @@
+[Unit]
+Description=Virion Relay Service
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/virion --config /etc/virion/relay.yaml
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
