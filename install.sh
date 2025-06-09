@@ -15,7 +15,7 @@ git clone https://github.com/nurohia/virion-core.git /opt/virion-core
 cd /opt/virion-core
 cargo build --release
 
-cp target/release/virion-core /usr/local/bin/virion
+cp target/release/virion /usr/local/bin/virion
 chmod +x /usr/local/bin/virion
 
 cp virion.sh /usr/local/bin/virion.sh
