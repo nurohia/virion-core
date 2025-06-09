@@ -1,47 +1,91 @@
 #!/bin/bash
+
 CONFIG_DIR="/etc/virion"
-BIN="/usr/local/bin/virion"
-LOG="/var/log/virion.log"
+RULE_FILE="$CONFIG_DIR/rules.yaml"
+LOG_FILE="/var/log/virion.log"
 
-show_menu() {
-  clear
-  echo "===== Virion 管理菜单 ====="
-  echo "1. 启动客户端"
-  echo "2. 启动中继节点"
-  echo "3. 启动服务端"
-  echo "---------------------------"
-  echo "4. 查看配置"
-  echo "5. 修改配置"
-  echo "6. 重启服务"
-  echo "7. 停止所有"
-  echo "---------------------------"
-  echo "8. 查看日志"
-  echo "9. 卸载 Virion"
-  echo "0. 退出"
+mkdir -p "$CONFIG_DIR"
+[ ! -f "$RULE_FILE" ] && echo -e "inbounds:\n  []\n\noutbounds:\n  []" > "$RULE_FILE"
+
+GREEN="\033[32m"
+RESET="\033[0m"
+
+add_direct_forward() {
+    read -p "请输入入口监听端口: " listen_port
+    read -p "请输入目标地址 IP:端口: " target
+
+    cat >> "$RULE_FILE" <<EOF
+
+- type: tcp
+  listen: 0.0.0.0:$listen_port
+EOF
+
+    cat >> "$RULE_FILE" <<EOF
+
+- type: tcp
+  remote: $target
+EOF
+
+    echo -e "${GREEN}规则添加成功：$listen_port -> $target${RESET}"
 }
 
-start_mode() {
-  MODE=$1
-  echo "[+] 启动 $MODE..."
-  nohup $BIN --config "$CONFIG_DIR/${MODE}.yaml" >> $LOG 2>&1 &
-  echo "[✓] $MODE 启动完成"
+add_relay_forward() {
+    read -p "请输入入口监听端口 (如 A 机): " entry_port
+    read -p "请输入中转出口地址 (B 机 IP:端口): " middle_target
+    read -p "请输入最终目标地址 (C 机 IP:端口): " final_target
+
+    cat >> "$RULE_FILE" <<EOF
+
+- type: tcp
+  listen: 0.0.0.0:$entry_port
+EOF
+
+    cat >> "$RULE_FILE" <<EOF
+
+- type: tcp
+  remote: $middle_target
+EOF
+
+    echo -e "${GREEN}入口中转规则添加成功：$entry_port -> $middle_target${RESET}"
+    echo -e "${GREEN}请在 B 机添加出口规则将其转发到：$final_target${RESET}"
 }
 
-while true; do
-  show_menu
-  read -rp "请输入选项 [0-9]: " choice
-  case "$choice" in
-    1) start_mode client ;;
-    2) start_mode relay ;;
-    3) start_mode server ;;
-    4) cat "$CONFIG_DIR"/*.yaml ;;
-    5) nano "$CONFIG_DIR/client.yaml" ;;
-    6) pkill virion && echo "重启中..." && sleep 1 && $BIN --config "$CONFIG_DIR/client.yaml" & ;;
-    7) pkill virion && echo "已停止所有 virion 实例。" ;;
-    8) tail -n 100 "$LOG" ;;
-    9) rm -rf /opt/virion-core /usr/local/bin/virion /usr/local/bin/virion.sh /etc/virion && echo "已卸载。" ;;
-    0) exit ;;
-    *) echo "无效选项，请重试。" ;;
-  esac
-  read -rp "按任意键继续..." _key
-done
+uninstall_virion() {
+    echo -e "${GREEN}卸载中...${RESET}"
+    systemctl stop virion 2>/dev/null
+    rm -rf /usr/local/bin/virion /usr/local/bin/virion.sh /etc/virion /opt/virion-core "$LOG_FILE"
+    echo -e "${GREEN}Virion 已彻底卸载。${RESET}"
+}
+
+main_menu() {
+    clear
+    echo -e "${GREEN}==== Virion 一键管理脚本 ====${RESET}"
+    echo "1) 添加入口直出规则"
+    echo "2) 添加中转规则"
+    echo "3) 查看当前规则"
+    echo "4) 删除规则 (请手动编辑 YAML)"
+    echo "5) 启动服务"
+    echo "6) 查看日志"
+    echo "7) 卸载服务"
+    echo "8) 退出"
+    echo "=============================="
+    read -p "请输入选项 [1-8]: " choice
+
+    case $choice in
+        1) add_direct_forward;;
+        2) add_relay_forward;;
+        3) cat "$RULE_FILE";;
+        4) echo "请手动编辑 $RULE_FILE 删除条目...";;
+        5) nohup virion-core -c "$RULE_FILE" >> "$LOG_FILE" 2>&1 & echo "[✓] 已启动 Virion";;
+        6) tail -n 100 "$LOG_FILE";;
+        7) uninstall_virion;;
+        8) exit 0;;
+        *) echo "无效选项";;
+    esac
+
+    echo ""
+    read -p "按回车继续..."
+    main_menu
+}
+
+main_menu

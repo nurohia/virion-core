@@ -1,4 +1,0 @@
-mode: relay
-listen: "0.0.0.0:40000"
-password: "supersecret"
-next: "server.example.com:40000"

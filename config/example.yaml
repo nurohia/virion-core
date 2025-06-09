@@ -1,0 +1,8 @@
+
+inbounds:
+  - type: tcp
+    listen: 0.0.0.0:12345
+
+outbounds:
+  - type: tcp
+    remote: 1.2.3.4:56789
