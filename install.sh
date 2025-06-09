@@ -11,7 +11,7 @@ if ! command -v cargo >/dev/null 2>&1; then
   source "$HOME/.cargo/env"
 fi
 
-git clone https://github.com/yourname/virion-core.git /opt/virion-core
+git clone git clone https://github.com/nurohia/virion-core.git /opt/virion-core
 cd /opt/virion-core
 cargo build --release
 
