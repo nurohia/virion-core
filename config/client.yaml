@@ -1,0 +1,4 @@
+mode: client
+listen: "127.0.0.1:1080"
+password: "supersecret"
+next: "relay.example.com:40000"

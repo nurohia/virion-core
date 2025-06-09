@@ -1,22 +1,34 @@
-
+mod config;
 mod crypto;
 mod protocol;
 mod transport;
 
 use clap::Parser;
-use std::fs;
+use config::{Config, Mode};
 
 #[derive(Parser)]
-struct Args {
-    #[arg(short, long, default_value = "/etc/virion/rules.yaml")]
+#[command(author, version, about = "Virion Core - Secure Tunnel Engine", long_about = None)]
+struct Cli {
+    #[arg(short, long, default_value = "config/client.yaml")]
     config: String,
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args = Args::parse();
-    let config_content = fs::read_to_string(&args.config)?;
-    println!("加载配置: {}", args.config);
-    transport::router::run(config_content).await?;
-    Ok(())
+async fn main() {
+    env_logger::init();
+    let cli = Cli::parse();
+
+    let config = match Config::from_file(&cli.config) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("配置加载失败: {}", e);
+            std::process::exit(1);
+        }
+    };
+
+    match config.mode {
+        Mode::Client => transport::tcp::start_tcp_listener(&config).await.unwrap(),
+        Mode::Relay => println!("TODO: relay"),
+        Mode::Server => transport::tcp::start_tcp_listener(&config).await.unwrap(),
+    }
 }
